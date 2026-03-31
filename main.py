@@ -60,7 +60,9 @@ def summarize_with_gemini(articles):
     prompt += "2. 各項目のタイトルは日本語に翻訳すること\n"
     prompt += "3. 各ニュース/論文について、2〜3行程度で「何が面白いか・重要か」を解説すること\n"
     prompt += "4. 専門用語が難しすぎる場合は軽く補足すること\n"
-    prompt += "5. トーンは「プロフェッショナルのリサーチャー」が同僚に共有するような少しカジュアルかつ知的なトーンにすること\n\n"
+    prompt += "5. トーンは「プロフェッショナルのリサーチャー」が同僚に共有するような少しカジュアルかつ知的なトーンにすること\n"
+    prompt += "6. 【重要】各記事のリンク（URL）は、以下の【生データ】にある 'Link:' の文字列を一文字も変更せずそのまま記載すること。AIによるURLの編集や捏造は厳禁です。\n"
+    prompt += "7. 【重要】URLは前後にカッコなどをつけず、必ず改行して独立した行に書いてください（Markdownの [テキスト](URL) 形式も使用不可）。\n\n"
     prompt += "【生データ（タイトルと概要、URL）】\n"
     
     for i, a in enumerate(articles):
@@ -117,11 +119,20 @@ def main():
 
     final_summary = summarize_with_gemini(articles)
     
+    # ---- ▼ ここから追加・変更：冒頭と末尾の固定メッセージ ----
+    header = "おはようございます！本日のAI関連ニュースと論文のまとめをお届けします。\n\n"
+    footer = "\n\n━━━━━━━━━━━━━━━━━━━━\n"
+    footer += "※このメールはGitHub Actions + Gemini API によって自動配信されています。\n"
+    
+    mail_body = header + final_summary + footer
+    # ---- ▲ ここまで ----
+
     # メールのタイトルには今日の日付を入れる
     today_str = datetime.now().strftime("%Y年%m月%d日")
     subject = f"【日刊 AI論文＆ニュース】自動要約ダイジェスト ({today_str})"
     
-    send_email(subject, final_summary)
+    # 送信する内容を final_summary から mail_body に変更
+    send_email(subject, mail_body)
 
 if __name__ == "__main__":
     main()
