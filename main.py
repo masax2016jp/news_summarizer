@@ -56,12 +56,13 @@ def summarize_with_gemini(articles):
     # Geminiに渡すテキストデータを組み立てる
     prompt = "以下の直近のAI関連ニュースや論文の最新情報を、日本語で分かりやすく要約・整理してメールマガジン形式で作成してください。\n\n"
     prompt += "【条件】\n"
-    prompt += "1. 出力は必ず**HTML形式**（<body>タグの中身となる部分）で作成してください（```html などのマークダウン記法は除外し、直接HTMLタグから始めてください）。\n"
-    prompt += "2. 各記事のタイトルは日本語に翻訳し、太字で少し大きく（<strong style=\"font-size: 1.15em;\">...</strong>など）すること。\n"
-    prompt += "3. セクションの見出し（例：AIニュース、論文など）は <h2> 等を使って分かりやすく分けること。\n"
-    prompt += "4. 各ニュース/論文について、2〜3行程度で「何が面白いか・重要か」を <p> タグ内で解説すること。\n"
+    prompt += "1. 出力は必ず**プレーンテキスト形式**で作成し、HTMLやMarkdown記法は使用しないでください。\n"
+    prompt += "2. 各記事のタイトルは日本語に翻訳し、【】や■などの記号を使って目立たせること（例：【記事タイトル】）。\n"
+    prompt += "3. セクションの見出し（AIニュース、論文など）は ▼ ニュース ▼ などの装飾をして区切ること。\n"
+    prompt += "4. 各ニュース/論文について、2〜3行程度で箇条書き（・）などを使い、「何が面白いか・重要か」を視覚的にスッキリ分かりやすく解説すること。\n"
     prompt += "5. プロフェッショナルが同僚に共有するような少しカジュアルかつ知的なトーンにすること。\n"
-    prompt += "6. 各記事のリンクは、以下の【生データ】にある 'Link:' のURLをそのまま使用し、<a href=\"URL\" target=\"_blank\">[詳細ページを開く]</a> のようにクリックしやすく装飾すること。URL自体の捏造は厳禁です。\n\n"
+    prompt += "6. 【重要】URLは前後にカッコなどをつけず、必ず改行して独立した行に置いてください。\n"
+    prompt += "7. 【重要】各記事の間には十分な空行を入れ、全体的にゆとりがあって読みやすいレイアウトにしてください。\n\n"
     prompt += "【生データ（タイトルと概要、URL）】\n"
     
     for i, a in enumerate(articles):
@@ -88,13 +89,10 @@ def summarize_with_gemini(articles):
 def send_email(subject, body):
     """要約結果を指定のメールアドレスに送信する"""
     msg = EmailMessage()
+    msg.set_content(body)
     msg['Subject'] = subject
     msg['From'] = SENDER_EMAIL
     msg['To'] = RECEIVER_EMAIL
-    
-    # HTMLメールとして送信 (プレーンテキストのフォールバック付き)
-    msg.set_content("お使いのメールクライアントはHTMLメールに対応していません。")
-    msg.add_alternative(body, subtype='html')
 
     # SSLを有効にしてSMTP経由で送信 (Gmailの場合)
     context = ssl.create_default_context()
@@ -121,19 +119,14 @@ def main():
 
     final_summary = summarize_with_gemini(articles)
     
-    # ---- ▼ ここから追加・変更：冒頭と末尾の固定メッセージ (HTML版) ----
-    header = "<html><body style=\"font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333;\">\n"
-    header += "<h2 style=\"color: #2c3e50;\">おはようございます！本日のAI関連ニュースと論文をお届けします✨</h2>\n"
-    header += "<hr style=\"border:0; border-top:1px solid #eee; margin-bottom: 25px;\">\n"
+    # ---- ▼ ここから追加・変更：冒頭と末尾の固定メッセージ (テキスト版) ----
+    header = "おはようございます！\n本日のAI関連ニュースと論文のまとめをお届けします。\n\n"
+    header += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
-    footer = "\n<hr style=\"border:0; border-top:1px solid #eee; margin-top: 30px;\">\n"
-    footer += "<p style=\"font-size: 0.85em; color: #888; text-align: center;\">※このメールは GitHub Actions + Gemini によって毎朝自動生成・配信されています</p>\n"
-    footer += "</body></html>"
+    footer = "\n\n━━━━━━━━━━━━━━━━━━━━━━\n"
+    footer += "※このメールは GitHub Actions + Gemini によって毎朝自動生成・配信されています。\n"
     
-    # Geminiがマークダウンのコードブロック(```html)を返してしまった場合を考慮して除去
-    final_summary_html = final_summary.replace("```html", "").replace("```", "").strip()
-    
-    mail_body = header + final_summary_html + footer
+    mail_body = header + final_summary + footer
     # ---- ▲ ここまで ----
 
     # メールのタイトルには今日の日付を入れる
